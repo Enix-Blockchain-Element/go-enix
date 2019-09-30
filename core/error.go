@@ -35,4 +35,7 @@ var (
 
 	// ErrNoGenesis is returned when there is no Genesis Block.
 	ErrNoGenesis = errors.New("genesis not found in chain")
+
+	// ErrDelayTooHigh is returned when the delay between the blocks in the presented chain is too high.
+	ErrDelayTooHigh = errors.New("Chain delay too high")
 )

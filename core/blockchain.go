@@ -1658,6 +1658,10 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 		substart = time.Now()
 		status, err := bc.writeBlockWithState(block, receipts, statedb)
 		if err != nil {
+			if err == ErrDelayTooHigh {
+				stats.ignored += len(it.chain)
+				bc.reportBlock(block, nil, err)
+			}
 			atomic.StoreUint32(&followupInterrupt, 1)
 			return it.index, events, coalescedLogs, err
 		}
@@ -1936,11 +1940,20 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 	// Ensure the user sees large reorgs
 	if len(oldChain) > 0 && len(newChain) > 0 {
 		logFn := log.Info
-		msg := "Chain reorg detected"
-		if len(oldChain) > 63 {
-			msg = "Large chain reorg detected"
+		msg := "Chain split detected"
+		if len(oldChain) < 10 {
+			logFn = log.Debug
+			msg = "Chain reorg detected"
+		} else if len(oldChain) >= 20 {
 			logFn = log.Warn
 		}
+		err := bc.CheckDelayedChain(newChain, false, true)
+		if err == ErrDelayTooHigh {
+			return err
+		}
+
+		blockReorgAddMeter.Mark(int64(len(newChain)))
+		blockReorgDropMeter.Mark(int64(len(oldChain)))
 		logFn(msg, "number", commonBlock.Number(), "hash", commonBlock.Hash(),
 			"drop", len(oldChain), "dropfrom", oldChain[0].Hash(), "add", len(newChain), "addfrom", newChain[0].Hash())
 		blockReorgAddMeter.Mark(int64(len(newChain)))
