@@ -92,7 +92,6 @@ func (bc *BlockChain) CheckDelayedChain(blocks types.Blocks, logonly, reverse bo
 		}
 		log.Error("Malicious chain detected!", context...)
 		bc.setBadHash(blocks[tipidx], params.DelayedBlockLength)
-		return ErrDelayTooHigh
 	}
 
 	return nil
